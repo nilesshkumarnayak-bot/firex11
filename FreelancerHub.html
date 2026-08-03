@@ -622,6 +622,7 @@ label.field-label{display:block;font-size:13px;font-weight:600;margin-bottom:6px
     </aside>
     <main class="app-main">
       <div class="app-topbar">
+        <button class="icon-btn" onclick="goBack()" id="backBtn" title="Back"><i data-lucide="chevron-left"></i></button>
         <button class="icon-btn" onclick="toggleSidebar()" id="sidebarToggle"><i data-lucide="menu"></i></button>
         <div style="flex:1"><h1 id="pageTitle">Home</h1><div class="sub" id="pageSub"></div></div>
         <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme"><i data-lucide="moon"></i></button>
@@ -664,6 +665,15 @@ const firebaseConfig = {
 const ZAPUPI={api:'',enabled:false};
 const CATEGORIES=[['development','Code'],['design','Palette'],['writing','Pen'],['marketing','Megaphone'],['video','Video'],['music','Music'],['business','Briefcase'],['ai','Brain']];
 const CAT_ICONS={development:'code',design:'palette',writing:'pen-tool',marketing:'megaphone',video:'video',music:'music',business:'briefcase',ai:'brain-circuit'};
+let CATS_CACHE=null;
+function getCats(){
+  if(CATS_CACHE)return Promise.resolve(CATS_CACHE);
+  return getDoc('settings/categories').catch(()=>({exists:false,data:()=>({})})).then(cd=>{
+    const raw=(cd.exists&&cd.data().list)||CATEGORIES;
+    CATS_CACHE=raw.map(c=>Array.isArray(c)?{id:c[0],name:c[1]}:c);
+    return CATS_CACHE;
+  });
+}
 const STATUS_LABEL={pending_payment:'Pending Payment',paid:'Paid',pending_acceptance:'Order Placed',active:'Active',in_progress:'In Progress',delivered:'Delivered',revision_requested:'Revision Requested',completed:'Completed',cancelled:'Cancelled',disputed:'Disputed',refunded:'Refunded'};
 const STATUS_PILL={pending_payment:'pill-warning',paid:'pill-info',pending_acceptance:'pill-warning',active:'pill-primary',in_progress:'pill-primary',delivered:'pill-info',revision_requested:'pill-warning',completed:'pill-success',cancelled:'pill-danger',disputed:'pill-accent',refunded:'pill-danger'};
 
@@ -836,7 +846,7 @@ function sortByKey(list,key,dir){const get=v=>key==='createdAt'||key==='updatedA
 </script>
 <script>
 /* ============ STATE ============ */
-const state={view:'home',role:null,ordersCache:null,currentOrder:null,activeConv:null,searchFilters:{q:'',cat:'',min:'',max:'',minRating:0,sort:'recommended',delivery:'',online:false,verified:false}};
+const state={view:'home',prevView:null,role:null,ordersCache:null,currentOrder:null,activeConv:null,searchFilters:{q:'',cat:'',min:'',max:'',minRating:0,sort:'recommended',delivery:'',online:false,verified:false}};
 
 /* ============ AUTH ============ */
 let authRole='client';
@@ -889,7 +899,9 @@ function logout(){confirmDialog('Logout','Are you sure you want to logout?','Log
 function openSidebar(){const s=document.getElementById('sidebar'),sc=document.getElementById('sidebarScrim');s.classList.add('open');sc.classList.add('show');}
 function closeSidebar(){const s=document.getElementById('sidebar'),sc=document.getElementById('sidebarScrim');s.classList.remove('open');sc.classList.remove('show');}
 function toggleSidebar(){const s=document.getElementById('sidebar');if(s.classList.contains('open'))closeSidebar();else openSidebar();}
+function goBack(){navigate(state.prevView||'home');}
 function navigate(view){
+  if(view!==state.view)state.prevView=state.view;
   state.view=view;
   document.getElementById('app-view').classList.remove('hidden');
   document.getElementById('landing-view').classList.add('hidden');
@@ -954,15 +966,14 @@ async function toggleFollow(id){if(!currentUser)return openAuth('login');await t
 /* ============ LANDING ============ */
 function fmtCount(n){const v=Number(n)||0;if(v>=10000000)return (v/10000000).toFixed(1).replace(/\.0$/,'')+' Cr';if(v>=100000)return (v/100000).toFixed(1).replace(/\.0$/,'')+' L';if(v>=1000)return (v/1000).toFixed(1).replace(/\.0$/,'')+'K';return ''+v;}
 function loadLanding(){
-  getDoc('settings/categories').catch(()=>({exists:false,data:()=>({})})).then(cd=>{
-    const cats=(cd.exists&&cd.data().list)||CATEGORIES;
+  getCats().then(cats=>{
     const cg=document.getElementById('catGrid');
-    cg.innerHTML=cats.map(([id,name])=>`<div class="cat-card" onclick="location.href='?c=${id}#search'"><div class="cat-icon"><i data-lucide="${CAT_ICONS[id]||'box'}"></i></div><h4>${name}</h4><p class="muted" id="catCount_${id}">…</p></div>`).join('');
+    cg.innerHTML=cats.map(c=>`<div class="cat-card" onclick="location.href='?c=${c.id}#search'"><div class="cat-icon"><i data-lucide="${CAT_ICONS[c.id]||'box'}"></i></div><h4>${c.name}</h4><p class="muted" id="catCount_${c.id}">…</p></div>`).join('');
     refreshIcons();
-    coll('services').where('active','==',true).get().then(s=>{
+    coll('services').get().then(s=>{
       const counts={};s.docs.forEach(d=>{const c=d.data().category;if(c)counts[c]=(counts[c]||0)+1;});
-      cats.forEach(([id])=>{const el=document.getElementById('catCount_'+id);const n=counts[id]||0;if(el)el.textContent=n+(n===1?' service':' services');});
-    }).catch(()=>{cats.forEach(([id])=>{const el=document.getElementById('catCount_'+id);if(el)el.textContent='—';});});
+      cats.forEach(c=>{const el=document.getElementById('catCount_'+c.id);const n=counts[c.id]||0;if(el)el.textContent=n+(n===1?' service':' services');});
+    }).catch(()=>{cats.forEach(c=>{const el=document.getElementById('catCount_'+c.id);if(el)el.textContent='—';});});
   });
   coll('freelancers').get().then(s=>{const el=document.getElementById('statFreelancers');if(el)el.textContent=fmtCount(s.size);}).catch(()=>{});
   coll('services').where('active','==',true).get().then(s=>{const el=document.getElementById('statServices');if(el)el.textContent=fmtCount(s.size);}).catch(()=>{});
@@ -1021,7 +1032,7 @@ function renderSearch(root){
     <div class="filters-bar"><button class="btn btn-secondary filter-btn-mobile" onclick="toggleFilterSheet()"><i data-lucide="sliders-horizontal"></i> Filters</button></div>
     <div class="search-page">
       <aside class="filters-sidebar" id="filtersSidebar">
-        <div class="filter-group"><h6>Category</h6><div class="chip-row">${CATEGORIES.map(([id,n])=>`<span class="chip ${isActive(id)}" onclick="setFilter('cat','${id}')">${n}</span>`).join('')}<span class="chip ${state.searchFilters.cat===''?'active':''}" onclick="setFilter('cat','')">All</span></div></div>
+        <div class="filter-group"><h6>Category</h6><div class="chip-row" id="catFilterChips"><span class="chip ${state.searchFilters.cat===''?'active':''}" onclick="setFilter('cat','')">All</span></div></div>
         <div class="filter-group"><h6>Price range</h6><div class="price-range"><input type="number" id="fltMin" placeholder="Min ₹" value="${state.searchFilters.min}"><input type="number" id="fltMax" placeholder="Max ₹" value="${state.searchFilters.max}"></div></div>
         <div class="filter-group"><h6>Minimum rating</h6><div class="check-list"><label><input type="radio" name="frating" ${state.searchFilters.minRating===4?'checked':''} onchange="setFilter('minRating',4)"> 4★ & up</label><label><input type="radio" name="frating" ${state.searchFilters.minRating===3?'checked':''} onchange="setFilter('minRating',3)"> 3★ & up</label><label><input type="radio" name="frating" ${state.searchFilters.minRating===0?'checked':''} onchange="setFilter('minRating',0)"> Any</label></div></div>
         <div class="filter-group"><h6>Delivery time</h6><div class="chip-row">${[['1','≤ 1 day'],['3','≤ 3 days'],['7','≤ 7 days']].map(([v,l])=>`<span class="chip ${delIsActive(v)}" onclick="setFilter('delivery','${v}')">${l}</span>`).join('')}<span class="chip ${state.searchFilters.delivery===''?'active':''}" onclick="setFilter('delivery','')">Any</span></div></div>
@@ -1035,6 +1046,14 @@ function renderSearch(root){
       </div>
     </div>`;
   runSearch();
+  fillCatFilters();
+}
+function fillCatFilters(){
+  const el=document.getElementById('catFilterChips');if(!el)return;
+  getCats().then(cats=>{
+    const isActive=v=>state.searchFilters.cat===v?'active':'';
+    el.innerHTML=`${cats.map(c=>`<span class="chip ${isActive(c.id)}" onclick="setFilter('cat','${c.id}')">${esc(c.name)}</span>`).join('')}<span class="chip ${state.searchFilters.cat===''?'active':''}" onclick="setFilter('cat','')">All</span>`;
+  });
 }
 const debouncedSearch=debounce(()=>{state.searchFilters.q=document.getElementById('searchQ').value.trim();runSearch();},350);
 function setFilter(k,v){state.searchFilters[k]=v;renderView('search');}
@@ -1573,7 +1592,8 @@ function openCreateService(editId){
 }
 function renderServiceForm(existing){
   const e=existing||{};
-  const catOpts=CATEGORIES.map(([id,n])=>`<option value="${id}" ${e.category===id?'selected':''}>${n}</option>`).join('');
+  getCats().then(cats=>{
+  const catOpts=cats.map(c=>`<option value="${c.id}" ${e.category===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
   openModal(`
     <div class="modal-head"><h3>${existing?'Edit service':'Create a service'}</h3><button class="icon-btn" onclick="closeModal()"><i data-lucide="x"></i></button></div>
     <div class="field"><label class="field-label">Service title</label><input id="svTitle" value="${esc(e.title||'')}" placeholder="e.g. I will design a stunning landing page"></div>
@@ -1593,6 +1613,7 @@ function renderServiceForm(existing){
         </div>`).join('')}
     </div>
     <button class="btn btn-primary btn-block btn-lg" onclick="saveService('${existing?existing.id:''}')">${existing?'Save changes':'Publish service'}</button>`,{size:'lg',static:true});
+  });
   refreshIcons();
 }
 async function saveService(id){
@@ -1797,7 +1818,11 @@ function openNewTicket(){
 function submitTicket(){
   const sub=document.getElementById('tSub').value.trim(),cat=document.getElementById('tCat').value,pri=document.getElementById('tPri').value,msg=document.getElementById('tMsg').value.trim();
   if(!sub||!msg)return toast('Subject and message are required','warning');
-  addDoc('supportTickets',{userId:currentUser.uid,userName:currentUserDoc.data().name,subject:sub,category:cat,priority:pri,status:'OPEN',ticketId:'TKT'+Date.now().toString(36).toUpperCase(),messages:[{from:'user',message:msg,at:serverTS()}],createdAt:serverTS(),updatedAt:serverTS()}).then(()=>{closeModal();toast('Ticket created');renderSupport(document.getElementById('view-root'));});
+  const btn=document.querySelector('#modal-root button[onclick="submitTicket()"]');
+  if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+  addDoc('supportTickets',{userId:currentUser.uid,userName:currentUserDoc.data().name,subject:sub,category:cat,priority:pri,status:'OPEN',ticketId:'TKT'+Date.now().toString(36).toUpperCase(),messages:[{from:'user',message:msg,at:new Date()}],createdAt:serverTS(),updatedAt:serverTS()})
+    .then(()=>{closeModal();toast('Ticket created');renderSupport(document.getElementById('view-root'));})
+    .catch(err=>{if(btn){btn.disabled=false;btn.textContent='Submit ticket';}toast((err&&err.message)||'Could not create ticket. Check internet and try again.','error');console.error('submitTicket error:',err);});
 }
 function openTicketDetail(id){
   coll('supportTickets').doc(id).get().then(d=>{
@@ -1814,7 +1839,7 @@ function replyTicket(id){
   const m=document.getElementById('tReply').value.trim();if(!m)return toast('Write a reply first','warning');
   const d=document.getElementById('modal-root').querySelector('.chat-messages');
   const t=state._ticketMsgs||[];
-  updateDoc('supportTickets/'+id,{messages:arrayUnion({from:'user',message:m,at:serverTS()}),status:'WAITING',updatedAt:serverTS()}).then(()=>{const b=document.createElement('div');b.className='msg mine';b.innerHTML='<div class="bubble">'+esc(m)+'<div class="meta">'+fmtTime(new Date())+'</div></div>';d.appendChild(b);document.getElementById('tReply').value='';toast('Reply sent');});
+  updateDoc('supportTickets/'+id,{messages:arrayUnion({from:'user',message:m,at:new Date()}),status:'WAITING',updatedAt:serverTS()}).then(()=>{const b=document.createElement('div');b.className='msg mine';b.innerHTML='<div class="bubble">'+esc(m)+'<div class="meta">'+fmtTime(new Date())+'</div></div>';d.appendChild(b);document.getElementById('tReply').value='';toast('Reply sent');}).catch(err=>toast((err&&err.message)||'Reply failed','error'));
 }
 
 /* ============ SETTINGS ============ */
@@ -2070,6 +2095,7 @@ try{loadZapupiConfig();}catch(e){}
 try{checkFirebaseSetup();}catch(e){}
 try{if(localStorage.getItem('fh_user')){document.getElementById('app-view').classList.remove('hidden');document.getElementById('landing-view').classList.add('hidden');}}catch(e){}
 if(auth)auth.onAuthStateChanged(async user=>{
+  try{const d=await getDoc('settings/platform');if(d.exists)Object.assign(APP,d.data());}catch(e){}
   if(user){
     currentUser=user;
     try{localStorage.setItem('fh_user',user.uid);}catch(e){}
