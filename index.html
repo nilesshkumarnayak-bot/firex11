@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>movie 4u - Stream Movies & Web Series</title>
+    
+    <link rel="manifest" href="data:application/manifest+json;base64,ewoibmFtZSI6Ik1PVklFIDRVIiwic2hvcnRfbmFtZSI6Ik1PVklFIDRVIiwiZGVzY3JpcHRpb24iOiJTdHJlYW0gbW92aWVzLCB3ZWIgc2VyaWVzIGFuZCBsaXZlIFRWLiIsInN0YXJ0X3VybCI6Ii4vaW5kZXguaHRtbCIsInNjb3BlIjoiLi8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsIm9yaWVudGF0aW9uIjoicG9ydHJhaXQiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzEwMTQxZiIsInRoZW1lX2NvbG9yIjoiIzAwYWFmZiIsImljb25zIjpbeyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSFpwWlhkQ2IzZzlJakFnTUNBMU1USWdOVEV5SWo0S0lDQWdJRHh5WldOMElIZHBaSFJvUFNJMU1USWlJR2hsYVdkb2REMGlOVEV5SWlCeWVEMGlNVEF3SWlCbWFXeHNQU0lqTVRBeE5ERm1JaTgrQ2lBZ0lDQThjbVZqZENCNFBTSTRPQ0lnZVQwaU1URTJJaUIzYVdSMGFEMGlNallpSUdobGFXZG9kRDBpTWpnd0lpQnllRDBpTVRNaUlHWnBiR3c5SWlNd01HRmhabVlpTHo0S0lDQWdJRHh3WVhSb0lHUTlJazB4TnpBZ01qVTJJRXcwTURBZ01UTXdJRXcwTURBZ016Z3lJRm9pSUdacGJHdzlJaU13TUdGaFptWWlMejRLUEM5emRtYytDZz09Iiwic2l6ZXMiOiJhbnkiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCIsInB1cnBvc2UiOiJhbnkgbWFza2FibGUifV19Cg==">
+    <meta name="theme-color" content="#00aaff"/>
+
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root, body[data-theme="movie4u-dark"] {
+            --primary-color: #00aaff; --primary-color-hover: #0088cc; --bg-color: #10141f; --text-color: #fff; --secondary-text-color: #aaa;
+            --card-bg: #1a2035; --section-bg: #10141f; --header-bg: linear-gradient(to bottom, rgba(26, 32, 53, 0.9), rgba(26, 32, 53, 0.7));
+            --border-color: #2a314b; --shadow-color: rgba(0,0,0,0.3); --body-bg-image: none; --body-font: 'Poppins', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--body-font), sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); margin: 0; overflow: hidden; }
+
+        #page-container { position: relative; max-width: 480px; margin: 0 auto; height: 100vh; }
+        .page { background-color: var(--section-bg); position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; padding-bottom: 80px; }
+        .page.active { opacity: 1; pointer-events: auto; z-index: 2; }
+        
+        .header { background: var(--header-bg); padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
+        .logo { font-size: 24px; font-weight: bold; color: var(--text-color); font-style: italic; }
+        .logo .fa-film { color: var(--primary-color); margin-left: 5px;}
+        .search-box { position: relative; width: 100%; max-width: 210px; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 13px; font-size: 13px; color: var(--secondary-text-color); }
+        .search-input { width: 100%; padding: 10px 30px 10px 34px; background-color: rgba(255,255,255,0.1); border: 1px solid var(--border-color); border-radius: 22px; color: var(--text-color); font-size: 14px; outline: none; }
+        .search-clear { position: absolute; right: 6px; width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(255,255,255,0.12); color: var(--secondary-text-color); font-size: 11px; display: none; align-items: center; justify-content: center; cursor: pointer; }
+        .search-clear.visible { display: flex; }
+
+        .search-results-panel { position: absolute; top: calc(100% + 8px); left: 12px; right: 12px; max-height: 60vh; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 200; padding: 12px; display: none; }
+        .search-results-panel.open { display: block; }
+        .search-results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .search-result-card { position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; background: var(--section-bg); border: 1px solid var(--border-color); }
+        .search-result-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; }
+        .search-result-title { padding: 6px; font-size: 11px; font-weight: 600; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+
+        .slider-container { position: relative; width: calc(100% - 24px); aspect-ratio: 16/9; max-height: 240px; overflow: hidden; border-radius: 16px; margin: 15px auto 25px; background: var(--card-bg); } 
+        .slider { display: flex; transition: transform 0.5s ease; height: 100%; width: 100%; } 
+        .slide { min-width: 100%; height: 100%; position: relative; cursor: pointer; } 
+        .slide img { width: 100%; height: 100%; object-fit: cover; } 
+        .slide-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); padding: 25px 15px 15px; } 
+        .slide-title { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 4px; } 
+        .slide-meta { font-size: 12px; color: #ddd; display: flex; gap: 10px; } 
+
+        .category-section { margin-bottom: 25px; }
+        .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 15px; }
+        .category-title { font-size: 18px; font-weight: bold; color: var(--text-color); border-left: 4px solid var(--primary-color); padding-left: 10px; }
+        
+        .content-slider { display: flex; overflow-x: auto; padding: 0 15px 15px; scrollbar-width: none; gap: 12px; }
+        .content-slider::-webkit-scrollbar { display: none; }
+        .content-card { flex: 0 0 110px; position: relative; border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--card-bg); border: 1px solid var(--border-color); }
+        .content-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; } 
+        .content-title { padding: 6px; font-size: 11px; font-weight: 600; text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .content-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 15px 20px; }
+        .page-header { padding: 15px; font-size: 22px; font-weight: bold; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; }
+
+        .loading-screen, #login-page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .loading-logo { font-size: 40px; font-weight: bold; color: var(--text-color); margin-bottom: 15px; font-style: italic;}
+        .loading-logo .fa-film { color: var(--primary-color);}
+
+        .detail-backdrop { width: 100%; height: 220px; position: relative; }
+        .detail-backdrop img { width: 100%; height: 100%; object-fit: cover; }
+        .detail-content { padding: 0 15px; display: flex; margin-top: -60px; position: relative; z-index: 10; gap: 15px;}
+        .detail-poster { width: 100px; height: 150px; border-radius: 10px; overflow: hidden; border: 2px solid var(--border-color); flex-shrink: 0;}
+        .detail-poster img { width: 100%; height: 100%; object-fit: cover; }
+        .detail-info { flex: 1; padding-top: 10px;}
+        .detail-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; color: var(--text-color); }
+        .detail-storyline { margin: 20px 0; line-height: 1.6; font-size: 13px; color: #ddd; padding: 0 15px; }
+
+        .btn { background: var(--primary-color); color: #fff; border: none; padding: 10px 15px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px; } 
+
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card-bg); display: flex; justify-content: space-around; padding: 10px 0 15px; z-index: 500; border-top: 1px solid var(--border-color); border-radius: 20px 20px 0 0; }
+        .nav-item { color: var(--secondary-text-color); text-align: center; flex: 1; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-item.active { color: var(--primary-color); font-weight: bold; }
+        .nav-item i { font-size: 20px; }
+
+        .video-player { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1200; display: none; } 
+        .video-player iframe { width: 100%; height: 100%; border: 0;} 
+        .video-close { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; z-index: 1205; cursor: pointer;}
+        
+        .server-switcher { position: absolute; top: 15px; left: 15px; right: 65px; z-index: 1202; display: flex; gap: 8px; overflow-x: auto; }
+        .server-chip { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 20px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+        .server-chip.active { background: var(--primary-color); }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1100; display: none; justify-content: center; align-items: center; }
+        .back-btn { position: fixed; background: rgba(0,0,0,0.6); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; top: 15px; left: 15px; display: none; z-index: 1001; cursor: pointer; }
+    </style>
+</head>
+<body data-theme="movie4u-dark">
+    <div class="loading-screen" id="loading-screen"><div class="loading-logo">MOVIE 4U<i class="fas fa-film"></i></div><div class="loading-text">Loading...</div></div>
+    <div id="login-page" style="display:none;"><div style="text-align:center; width:80%;">
+        <div class="loading-logo">MOVIE 4U<i class="fas fa-film"></i></div>
+        <input type="text" id="login-name" class="search-input" placeholder="Enter your name" style="margin-bottom:15px; width:100%; text-align:center;"><br>
+        <button id="login-btn" class="btn" style="width:100%;" onclick="handleLogin()">Continue</button>
+    </div></div>
+    
+    <div class="modal-overlay" id="disclaimer-overlay" style="display:none;">
+        <div style="background:var(--card-bg); padding:25px; border-radius:16px; text-align:center; width:90%; max-width:350px;">
+            <h2 style="color:var(--primary-color); margin-bottom:15px;">Notice</h2>
+            <p style="font-size:13px; color:var(--secondary-text-color); margin-bottom:20px;">Content is retrieved via public third-party databases.</p>
+            <button class="btn" id="enter-btn" style="width:100%;">Enter App</button>
+        </div>
+    </div>
+
+    <button class="back-btn" id="back-btn" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+    
+    <main id="page-container">
+        <!-- HOME PAGE -->
+        <div id="home-page" class="page active">
+            <div class="header">
+                <div class="logo">MOVIE 4U<i class="fas fa-film"></i></div>
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="search-input" placeholder="Search..." autocomplete="off">
+                    <button class="search-clear" id="search-clear-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="search-results-panel" id="search-results-panel"></div>
+            </div>
+
+            <div class="slider-container"><div class="slider" id="slider"></div></div>
+            
+            <div class="category-section" id="cat-trending" style="display:none;">
+                <div class="category-header"><h2 class="category-title">Trending Now</h2></div>
+                <div class="content-slider" id="trending-slider"></div>
+            </div>
+
+            <div id="categories-container"></div>
+        </div>
+        
+        <!-- DETAIL PAGE -->
+        <div id="detail-page" class="page"></div>
+        
+        <!-- MOVIES PAGE -->
+        <div id="movies-page" class="page">
+            <div class="page-header">Movies</div>
+            <div class="content-grid" id="movies-grid"></div>
+        </div>
+        
+        <!-- SERIES PAGE -->
+        <div id="series-page" class="page">
+            <div class="page-header">Series</div>
+            <div class="content-grid" id="series-grid"></div>
+        </div>
+        
+        <!-- PROFILE PAGE -->
+        <div id="profile-page" class="page">
+            <div class="page-header">Profile</div>
+            <div style="padding: 15px;">
+                <h2 id="id-card-name" style="color:var(--primary-color);">User</h2>
+                <button class="btn" style="margin-top:15px;" onclick="handleLogout()">Logout</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- PLAYER -->
+    <div class="video-player" id="video-player">
+        <button class="video-close" onclick="closeVideoPlayer()"><i class="fas fa-times"></i></button>
+        <div class="server-switcher" id="server-bar-movie"></div>
+        <iframe id="video-embed-frame" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    </div>
+
+    <nav class="bottom-nav" id="bottom-nav" style="display: none;">
+        <div class="nav-item active" onclick="navigateTo('home-page')"><i class="fas fa-home"><span>Home</span></i></div>
+        <div class="nav-item" onclick="navigateTo('movies-page')"><i class="fas fa-film"><span>Movies</span></i></div>
+        <div class="nav-item" onclick="navigateTo('series-page')"><i class="fas fa-clone"><span>Series</span></i></div>
+        <div class="nav-item" onclick="navigateTo('profile-page')"><i class="fas fa-user"><span>Profile</span></i></div>
+    </nav>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDB0BumT012iQZ5nhdoiBJxJXaVrhhwvJA",
+            authDomain: "shop4u-a4d37.firebaseapp.com",
+            databaseURL: "https://shop4u-a4d37-default-rtdb.firebaseio.com",
+            projectId: "shop4u-a4d37",
+            storageBucket: "shop4u-a4d37.firebasestorage.app",
+            messagingSenderId: "805211064556",
+            appId: "1:805211064556:web:b36cb1ad0c86b7eb257dc9",
+            measurementId: "G-KEPR12QNHC"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const TMDB_API_KEY = "d90efc736c0dbbf4cc57bf35d1166206";
+        const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+        let allContent = [], currentContent = null, sliderInterval = null, currentSlide = 0;
+        let currentUser = null, previousPageId = 'home-page';
+
+        function proxyImg(url) {
+            if (!url || url.includes('null') || url.includes('undefined')) return 'https://via.placeholder.com/300x450/1a2035/00aaff?text=No+Image';
+            if (url.includes('tmdb.org')) {
+                return 'https://images.weserv.nl/?url=' + encodeURIComponent(url.replace('https://', ''));
+            }
+            return url;
+        }
+
+        async function secureFetch(endpoint) {
+            const targetUrl = `${TMDB_BASE_URL}${endpoint}&api_key=${TMDB_API_KEY}`;
+            // HTTPS-secure proxies compatible with GitHub Pages
+            const proxies = [
+                (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+                (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+                (u) => u
+            ];
+
+            for (let proxyFn of proxies) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    let res = await fetch(proxyFn(targetUrl), { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    if (res.ok) {
+                        let data = await res.json();
+                        if (data && (data.results || data.id)) return data;
+                    }
+                } catch (e) {}
+            }
+            return { results: [] };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let user = localStorage.getItem('nh_box_user');
+            if (user) {
+                currentUser = JSON.parse(user);
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('disclaimer-overlay').style.display = 'flex';
+                document.getElementById('bottom-nav').style.display = 'flex';
+                document.getElementById('id-card-name').textContent = currentUser.name;
+            } else {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('login-page').style.display = 'flex';
+            }
+
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', (e) => {
+                document.getElementById('search-clear-btn').classList.toggle('visible', !!e.target.value);
+                renderSearchResults(e.target.value);
+            });
+            
+            document.getElementById('search-clear-btn').addEventListener('click', () => {
+                searchInput.value = ''; 
+                document.getElementById('search-clear-btn').classList.remove('visible');
+                document.getElementById('search-results-panel').classList.remove('open');
+            });
+            
+            document.getElementById('enter-btn').addEventListener('click', () => {
+                document.getElementById('disclaimer-overlay').style.display = 'none';
+                loadContentSuperFast();
+            });
+        });
+
+        function handleLogin() {
+            const name = document.getElementById('login-name').value.trim();
+            if (name.length < 2) return alert('Enter a valid name');
+            currentUser = { id: 'usr_' + Date.now(), name: name };
+            localStorage.setItem('nh_box_user', JSON.stringify(currentUser));
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('disclaimer-overlay').style.display = 'flex';
+            document.getElementById('bottom-nav').style.display = 'flex';
+            document.getElementById('id-card-name').textContent = currentUser.name;
+        }
+        function handleLogout() { localStorage.clear(); window.location.reload(); }
+
+        const TMDB_CATEGORIES = [
+            { id: 'hollywood', name: 'Hollywood', endpoint: '/discover/movie?with_original_language=en' },
+            { id: 'bollywood', name: 'Bollywood', endpoint: '/discover/movie?with_original_language=hi&region=IN' },
+            { id: 'south', name: 'South Indian', endpoint: '/discover/movie?with_original_language=te|ta' }
+        ];
+
+        function createCategoryContainer(id, name) {
+            const container = document.getElementById('categories-container');
+            if (document.getElementById(`cat-${id}`)) return;
+            const section = document.createElement('div');
+            section.className = 'category-section';
+            section.id = `cat-${id}`;
+            section.style.display = 'none';
+            section.innerHTML = `
+                <div class="category-header"><h2 class="category-title">${name}</h2></div>
+                <div class="content-slider" id="${id}-slider"></div>
+            `;
+            container.appendChild(section);
+        }
+
+        async function loadContentSuperFast() {
+            TMDB_CATEGORIES.forEach(cat => createCategoryContainer(cat.id, cat.name));
+
+            // Load Trending
+            const trendingData = await secureFetch('/trending/all/day?');
+            if (trendingData && trendingData.results) {
+                const items = parseTMDBResults(trendingData.results, 'Trending Now');
+                mergeToAllContent(items);
+                updateSlider(items);
+                
+                const trendSlider = document.getElementById('trending-slider');
+                trendSlider.innerHTML = '';
+                items.slice(0, 10).forEach(i => trendSlider.appendChild(createContentCard(i)));
+                document.getElementById('cat-trending').style.display = 'block';
+            }
+
+            // Load Categories
+            TMDB_CATEGORIES.forEach(async (cat) => {
+                const data = await secureFetch(cat.endpoint);
+                if (data && data.results && data.results.length > 0) {
+                    const items = parseTMDBResults(data.results, cat.name);
+                    mergeToAllContent(items);
+                    const slider = document.getElementById(`${cat.id}-slider`);
+                    if (slider) {
+                        slider.innerHTML = '';
+                        items.forEach(i => slider.appendChild(createContentCard(i)));
+                        document.getElementById(`cat-${cat.id}`).style.display = 'block';
+                    }
+                }
+            });
+        }
+
+        function parseTMDBResults(results, categoryName) {
+            return results.map(i => ({
+                id: `tmdb_${i.id}`, 
+                tmdbId: i.id, 
+                title: i.title || i.name,
+                poster: proxyImg(i.poster_path ? `https://image.tmdb.org/t/p/w500${i.poster_path}` : ''),
+                backdrop: proxyImg(i.backdrop_path ? `https://image.tmdb.org/t/p/w1280${i.backdrop_path}` : ''),
+                rating: i.vote_average ? i.vote_average.toFixed(1) : '', 
+                year: (i.release_date || i.first_air_date || '').split('-')[0],
+                category: categoryName, 
+                type: i.media_type === 'tv' ? 'webseries' : 'movie', 
+                storyline: i.overview
+            })).filter(i => i.poster);
+        }
+
+        function mergeToAllContent(newItems) {
+            const unique = newItems.filter(n => !allContent.some(e => e.id === n.id));
+            allContent = [...allContent, ...unique];
+        }
+
+        function updateSlider(items) { 
+            const slider = document.getElementById('slider'); 
+            slider.innerHTML = ''; 
+            const valid = items.filter(i => i.backdrop).slice(0, 5);
+            
+            valid.forEach((item) => { 
+                const slide = document.createElement('div'); 
+                slide.className = 'slide'; 
+                slide.innerHTML = `<img src="${item.backdrop}"><div class="slide-overlay"><div class="slide-title">${item.title}</div><div class="slide-meta"><span>${item.year}</span><span>⭐ ${item.rating || 'N/A'}</span></div></div>`; 
+                slide.onclick = () => showDetail(item); 
+                slider.appendChild(slide); 
+            }); 
+            
+            if (sliderInterval) clearInterval(sliderInterval);
+            if (valid.length > 1) {
+                sliderInterval = setInterval(() => { 
+                    currentSlide = (currentSlide + 1) % valid.length; 
+                    slider.style.transform = `translateX(-${currentSlide * 100}%)`; 
+                }, 4000); 
+            }
+        }
+
+        function createContentCard(item) { 
+            const card = document.createElement('div'); 
+            card.className = 'content-card'; 
+            card.innerHTML = `<img src="${item.poster}" loading="lazy"><div class="content-title">${item.title}</div>`; 
+            card.onclick = () => showDetail(item); 
+            return card; 
+        }
+
+        function renderSearchResults(q) {
+            const panel = document.getElementById('search-results-panel');
+            q = q.trim().toLowerCase();
+            if (!q) return panel.classList.remove('open');
+            
+            const matches = allContent.filter(i => i.title.toLowerCase().includes(q)).slice(0, 15);
+            if (matches.length === 0) {
+                panel.innerHTML = `<div style="padding:15px; text-align:center; font-size:12px;">No results found</div>`;
+            } else {
+                panel.innerHTML = `<div class="search-results-grid">${matches.map(i => `<div class="search-result-card" onclick="selectSearchResult('${i.id}')"><img src="${i.poster}"><div class="search-result-title">${i.title}</div></div>`).join('')}</div>`;
+            }
+            panel.classList.add('open');
+        }
+
+        function selectSearchResult(id) { 
+            const item = allContent.find(i => i.id === id); 
+            if(item) { 
+                document.getElementById('search-input').value = ''; 
+                document.getElementById('search-results-panel').classList.remove('open'); 
+                showDetail(item); 
+            } 
+        }
+
+        function showDetail(item) {
+            currentContent = item;
+            document.getElementById('detail-page').innerHTML = `
+                <div class="detail-backdrop"><img src="${item.backdrop}"></div>
+                <div class="detail-content">
+                    <div class="detail-poster"><img src="${item.poster}"></div>
+                    <div class="detail-info">
+                        <h1 class="detail-title">${item.title}</h1>
+                        <div style="font-size:12px; color:#aaa; margin-bottom:15px;">${item.year || ''} • ⭐ ${item.rating || 'N/A'}</div>
+                        <button class="btn" onclick="playMovie()"><i class="fas fa-play"></i> Watch Now</button>
+                    </div>
+                </div>
+                <div class="detail-storyline">${item.storyline || 'No overview available.'}</div>`;
+            navigateTo('detail-page');
+        }
+
+        function navigateTo(pageId) {
+            const outgoing = document.querySelector('.page.active');
+            const incoming = document.getElementById(pageId);
+            if (!incoming || (outgoing && outgoing.id === pageId)) return;
+            
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const act = document.querySelector(`.nav-item[onclick="navigateTo('${pageId}')"]`); 
+            if(act) act.classList.add('active');
+            
+            document.getElementById('back-btn').style.display = ['home-page', 'profile-page', 'movies-page', 'series-page'].includes(pageId) ? 'none' : 'block';
+            
+            if (outgoing) { previousPageId = outgoing.id; outgoing.classList.remove('active'); }
+            incoming.classList.add('active'); 
+            incoming.scrollTop = 0;
+        }
+
+        function goBack() { navigateTo(previousPageId); }
+
+        const EMBED_SERVERS = [
+            { id: 1, name: 'Server 1', movie: t => `https://vidsrc.to/embed/movie/${t}` },
+            { id: 2, name: 'Server 2', movie: t => `https://multiembed.mov/?video_id=${t}` },
+            { id: 3, name: 'Server 3', movie: t => `https://vidsrc.xyz/embed/movie?tmdb=${t}` }
+        ];
+
+        function playMovie() {
+            if(!currentContent) return;
+            document.getElementById('video-player').style.display = 'block';
+            const bar = document.getElementById('server-bar-movie');
+            bar.innerHTML = EMBED_SERVERS.map(sv => `<button class="server-chip ${sv.id === 1 ? 'active' : ''}" onclick="switchServer(${sv.id})">${sv.name}</button>`).join('');
+            document.getElementById('video-embed-frame').src = EMBED_SERVERS[0].movie(currentContent.tmdbId);
+        }
+
+        function switchServer(svId) {
+            const sv = EMBED_SERVERS.find(x => x.id === svId);
+            document.querySelectorAll('.server-chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('video-embed-frame').src = sv.movie(currentContent.tmdbId);
+        }
+
+        function closeVideoPlayer() { document.getElementById('video-embed-frame').src = ''; document.getElementById('video-player').style.display = 'none'; }
+    </script>
+</body>
+</html>
